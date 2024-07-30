@@ -120,5 +120,4 @@
 #define Xe  81 // Xenon
 #define Rn  82 // Radon
 
-
 #endif //PERIODIC_TABLE_ELEMENTS_H
