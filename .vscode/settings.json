@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "trigger.h": "c",
+        "string.h": "c",
+        "stdint.h": "c"
+    }
+}
