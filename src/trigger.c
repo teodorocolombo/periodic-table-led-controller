@@ -1,6 +1,13 @@
 #include "trigger.h"
 
 #include <stdint.h>
+#include "stm32f1xx_hal.h"
+
+// Estrutura para armazenar os pinos de ativação
+typedef struct {
+    uint16_t colunaPin;
+    uint16_t linhaPin;
+} Pins;
 
 enum Column
 {
@@ -94,97 +101,129 @@ const int family_sizes[] = {
     sizeof(actinides) / sizeof(actinides[0])
 };
 
-// Tabela de valores (linha << 4 | coluna)
-// Iremos usar a GPIOA como saida, onde utilizaremos 8bits para escolher qual
-// Tabela de valores (linha << 3 | coluna)
-const uint8_t element_values[] = {
-    (ROW_1) | (COL_1 << 3),  // H   = 00001001
-    (ROW_1) | (COL_18 << 3), // He  = 10010001
-    (ROW_2) | (COL_1 << 3),  // Li  = 00001010
-    (ROW_2) | (COL_2 << 3),  // Be  = 00011010
-    (ROW_2) | (COL_13 << 3), // B   = 10101010
-    (ROW_2) | (COL_14 << 3), // C   = 10111010
-    (ROW_2) | (COL_15 << 3), // N   = 11001010
-    (ROW_2) | (COL_16 << 3), // O   = 11011010
-    (ROW_2) | (COL_17 << 3), // F   = 11101010
-    (ROW_2) | (COL_18 << 3), // Ne  = 11111010
-    (ROW_3) | (COL_1 << 3),  // Na  = 00001011
-    (ROW_3) | (COL_2 << 3),  // Mg  = 00011011
-    (ROW_3) | (COL_13 << 3), // Al  = 10101011
-    (ROW_3) | (COL_14 << 3), // Si  = 10111011
-    (ROW_3) | (COL_15 << 3), // P   = 11001011
-    (ROW_3) | (COL_16 << 3), // S   = 11011011
-    (ROW_3) | (COL_17 << 3), // Cl  = 11101011
-    (ROW_3) | (COL_18 << 3), // Ar  = 11111011
-    (ROW_4) | (COL_1 << 3),  // K   = 00001100
-    (ROW_4) | (COL_2 << 3),  // Ca  = 00011100
-    (ROW_4) | (COL_3 << 3),  // Sc  = 00101100
-    (ROW_4) | (COL_4 << 3),  // Ti  = 00111100
-    (ROW_4) | (COL_5 << 3),  // V   = 01001100
-    (ROW_4) | (COL_6 << 3),  // Cr  = 01011100
-    (ROW_4) | (COL_7 << 3),  // Mn  = 01101100
-    (ROW_4) | (COL_8 << 3),  // Fe  = 01111100
-    (ROW_4) | (COL_9 << 3),  // Co  = 10001100
-    (ROW_4) | (COL_10 << 3), // Ni  = 10011100
-    (ROW_4) | (COL_11 << 3), // Cu  = 10101100
-    (ROW_4) | (COL_12 << 3), // Zn  = 10111100
-    (ROW_4) | (COL_13 << 3), // Ga  = 11001100
-    (ROW_4) | (COL_14 << 3), // Ge  = 11011100
-    (ROW_4) | (COL_15 << 3), // As  = 11101100
-    (ROW_4) | (COL_16 << 3), // Se  = 11111100
-    (ROW_4) | (COL_17 << 3), // Br  = 00001101
-    (ROW_4) | (COL_18 << 3), // Kr  = 00011101
-    (ROW_5) | (COL_1 << 3),  // Rb  = 00001101
-    (ROW_5) | (COL_2 << 3),  // Sr  = 00011101
-    (ROW_5) | (COL_3 << 3),  // Y   = 00101101
-    (ROW_5) | (COL_4 << 3),  // Zr  = 00111101
-    (ROW_5) | (COL_5 << 3),  // Nb  = 01001101
-    (ROW_5) | (COL_6 << 3),  // Mo  = 01011101
-    (ROW_5) | (COL_7 << 3),  // Tc  = 01101101
-    (ROW_5) | (COL_8 << 3),  // Ru  = 01111101
-    (ROW_5) | (COL_9 << 3),  // Rh  = 10001101
-    (ROW_5) | (COL_10 << 3), // Pd  = 10011101
-    (ROW_5) | (COL_11 << 3), // Ag  = 10101101
-    (ROW_5) | (COL_12 << 3), // Cd  = 10111101
-    (ROW_5) | (COL_13 << 3), // In  = 11001101
-    (ROW_5) | (COL_14 << 3), // Sn  = 11011101
-    (ROW_5) | (COL_15 << 3), // Sb  = 11101101
-    (ROW_5) | (COL_16 << 3), // Te  = 11111101
-    (ROW_5) | (COL_17 << 3), // I   = 00001110
-    (ROW_5) | (COL_18 << 3), // Xe  = 00011110
-    (ROW_6) | (COL_1 << 3),  // Cs  = 00001110
-    (ROW_6) | (COL_2 << 3),  // Ba  = 00011110
-    (ROW_6) | (COL_3 << 3),  // La  = 00101110
-    (ROW_6) | (COL_4 << 3),  // Ce  = 00111110
-    (ROW_6) | (COL_5 << 3),  // Pr  = 01001110
-    (ROW_6) | (COL_6 << 3),  // Nd  = 01011110
-    (ROW_6) | (COL_7 << 3),  // Pm  = 01101110
-    (ROW_6) | (COL_8 << 3),  // Sm  = 01111110
-    (ROW_6) | (COL_9 << 3),  // Eu  = 10001110
-    (ROW_6) | (COL_10 << 3), // Gd  = 10011110
-    (ROW_6) | (COL_11 << 3), // Tb  = 10101110
-    (ROW_6) | (COL_12 << 3), // Dy  = 10111110
-    (ROW_6) | (COL_13 << 3), // Ho  = 11001110
-    (ROW_6) | (COL_14 << 3), // Er  = 11011110
-    (ROW_6) | (COL_15 << 3), // Tm  = 11101110
-    (ROW_6) | (COL_16 << 3), // Yb  = 11111110
-    (ROW_6) | (COL_17 << 3), // Lu  = 00001111
-    (ROW_7) | (COL_3 << 3),  // Ac  = 00101111
-    (ROW_7) | (COL_4 << 3),  // Th  = 00111111
-    (ROW_7) | (COL_5 << 3),  // Pa  = 01001111
-    (ROW_7) | (COL_6 << 3),  // U   = 01011111
-    (ROW_7) | (COL_7 << 3),  // Np  = 01101111
-    (ROW_7) | (COL_8 << 3),  // Pu  = 01111111
-    (ROW_7) | (COL_9 << 3),  // Am  = 10001111
-    (ROW_7) | (COL_10 << 3), // Cm  = 10011111
-    (ROW_7) | (COL_11 << 3), // Bk  = 10101111
-    (ROW_7) | (COL_12 << 3), // Cf  = 10111111
-    (ROW_7) | (COL_13 << 3), // Es  = 11001111
-    (ROW_7) | (COL_14 << 3), // Fm  = 11011111
-    (ROW_7) | (COL_15 << 3), // Md  = 11101111
-    (ROW_7) | (COL_16 << 3), // No  = 11111111
-    (ROW_7) | (COL_17 << 3), // Lr  = 00010000
+
+// Vetor de estruturas PinosAtivacao correspondente aos elementos
+Pins element_values[] = {
+    {GPIO_PIN_9,  GPIO_PIN_7},  // H - PB9, PA7
+    {GPIO_PIN_15, GPIO_PIN_7},  // He - PC15, PA7
+    {GPIO_PIN_8,  GPIO_PIN_6},  // Li - PB8, PA6
+    {GPIO_PIN_8,  GPIO_PIN_5},  // Be - PB8, PA5
+    {GPIO_PIN_7,  GPIO_PIN_5},  // B - PB7, PA5
+    {GPIO_PIN_6,  GPIO_PIN_5},  // C - PB6, PA5
+    {GPIO_PIN_5,  GPIO_PIN_5},  // N - PB5, PA5
+    {GPIO_PIN_4,  GPIO_PIN_5},  // O - PB4, PA5
+    {GPIO_PIN_3,  GPIO_PIN_5},  // F - PB3, PA5
+    {GPIO_PIN_2,  GPIO_PIN_5},  // Ne - PB2, PA5
+    {GPIO_PIN_1,  GPIO_PIN_5},  // Na - PB1, PA5
+    {GPIO_PIN_0,  GPIO_PIN_5},  // Mg - PB0, PA5
+    {GPIO_PIN_15, GPIO_PIN_6},  // Al - PC15, PA6
+    {GPIO_PIN_14, GPIO_PIN_6},  // Si - PC14, PA6
+    {GPIO_PIN_13, GPIO_PIN_6},  // P - PC13, PA6
+    {GPIO_PIN_12, GPIO_PIN_6},  // S - PC12, PA6
+    {GPIO_PIN_11, GPIO_PIN_6},  // Cl - PC11, PA6
+    {GPIO_PIN_10, GPIO_PIN_6},  // Ar - PC10, PA6
+    {GPIO_PIN_9,  GPIO_PIN_6},  // K - PC9, PA6
+    {GPIO_PIN_8,  GPIO_PIN_6},  // Ca - PC8, PA6
+    {GPIO_PIN_7,  GPIO_PIN_6},  // Sc - PC7, PA6
+    {GPIO_PIN_6,  GPIO_PIN_6},  // Ti - PC6, PA6
+    {GPIO_PIN_5,  GPIO_PIN_6},  // V - PC5, PA6
+    {GPIO_PIN_4,  GPIO_PIN_6},  // Cr - PC4, PA6
+    {GPIO_PIN_3,  GPIO_PIN_6},  // Mn - PC3, PA6
+    {GPIO_PIN_2,  GPIO_PIN_6},  // Fe - PC2, PA6
+    {GPIO_PIN_1,  GPIO_PIN_6},  // Co - PC1, PA6
+    {GPIO_PIN_0,  GPIO_PIN_6},  // Ni - PC0, PA6
+    {GPIO_PIN_15, GPIO_PIN_7},  // Cu - PC15, PA7
+    {GPIO_PIN_14, GPIO_PIN_7},  // Zn - PC14, PA7
+    {GPIO_PIN_13, GPIO_PIN_7},  // Ga - PC13, PA7
+    {GPIO_PIN_12, GPIO_PIN_7},  // Ge - PC12, PA7
+    {GPIO_PIN_11, GPIO_PIN_7},  // As - PC11, PA7
+    {GPIO_PIN_10, GPIO_PIN_7},  // Se - PC10, PA7
+    {GPIO_PIN_9,  GPIO_PIN_7},  // Br - PC9, PA7
+    {GPIO_PIN_8,  GPIO_PIN_7},  // Kr - PC8, PA7
+    {GPIO_PIN_7,  GPIO_PIN_7},  // Rb - PC7, PA7
+    {GPIO_PIN_6,  GPIO_PIN_7},  // Sr - PC6, PA7
+    {GPIO_PIN_5,  GPIO_PIN_7},  // Y - PC5, PA7
+    {GPIO_PIN_4,  GPIO_PIN_7},  // Zr - PC4, PA7
+    {GPIO_PIN_3,  GPIO_PIN_7},  // Nb - PC3, PA7
+    {GPIO_PIN_2,  GPIO_PIN_7},  // Mo - PC2, PA7
+    {GPIO_PIN_1,  GPIO_PIN_7},  // Tc - PC1, PA7
+    {GPIO_PIN_0,  GPIO_PIN_7},  // Ru - PC0, PA7
+    {GPIO_PIN_15, GPIO_PIN_8},  // Rh - PC15, PA8
+    {GPIO_PIN_14, GPIO_PIN_8},  // Pd - PC14, PA8
+    {GPIO_PIN_13, GPIO_PIN_8},  // Ag - PC13, PA8
+    {GPIO_PIN_12, GPIO_PIN_8},  // Cd - PC12, PA8
+    {GPIO_PIN_11, GPIO_PIN_8},  // In - PC11, PA8
+    {GPIO_PIN_10, GPIO_PIN_8},  // Sn - PC10, PA8
+    {GPIO_PIN_9,  GPIO_PIN_8},  // Sb - PC9, PA8
+    {GPIO_PIN_8,  GPIO_PIN_8},  // Te - PC8, PA8
+    {GPIO_PIN_7,  GPIO_PIN_8},  // I - PC7, PA8
+    {GPIO_PIN_6,  GPIO_PIN_8},  // Xe - PC6, PA8
+    {GPIO_PIN_5,  GPIO_PIN_8},  // Cs - PC5, PA8
+    {GPIO_PIN_4,  GPIO_PIN_8},  // Ba - PC4, PA8
+    {GPIO_PIN_3,  GPIO_PIN_8},  // La - PC3, PA8
+    {GPIO_PIN_2,  GPIO_PIN_8},  // Ce - PC2, PA8
+    {GPIO_PIN_1,  GPIO_PIN_8},  // Pr - PC1, PA8
+    {GPIO_PIN_0,  GPIO_PIN_8},  // Nd - PC0, PA8
+    {GPIO_PIN_15, GPIO_PIN_9},  // Pm - PC15, PA9
+    {GPIO_PIN_14, GPIO_PIN_9},  // Sm - PC14, PA9
+    {GPIO_PIN_13, GPIO_PIN_9},  // Eu - PC13, PA9
+    {GPIO_PIN_12, GPIO_PIN_9},  // Gd - PC12, PA9
+    {GPIO_PIN_11, GPIO_PIN_9},  // Tb - PC11, PA9
+    {GPIO_PIN_10, GPIO_PIN_9},  // Dy - PC10, PA9
+    {GPIO_PIN_9,  GPIO_PIN_9},  // Ho - PC9, PA9
+    {GPIO_PIN_8,  GPIO_PIN_9},  // Er - PC8, PA9
+    {GPIO_PIN_7,  GPIO_PIN_9},  // Tm - PC7, PA9
+    {GPIO_PIN_6,  GPIO_PIN_9},  // Yb - PC6, PA9
+    {GPIO_PIN_5,  GPIO_PIN_9},  // Lu - PC5, PA9
+    {GPIO_PIN_4,  GPIO_PIN_9},  // Hf - PC4, PA9
+    {GPIO_PIN_3,  GPIO_PIN_9},  // Ta - PC3, PA9
+    {GPIO_PIN_2,  GPIO_PIN_9},  // W - PC2, PA9
+    {GPIO_PIN_1,  GPIO_PIN_9},  // Re - PC1, PA9
+    {GPIO_PIN_0,  GPIO_PIN_9},  // Os - PC0, PA9
+    {GPIO_PIN_15, GPIO_PIN_10}, // Ir - PC15, PA10
+    {GPIO_PIN_14, GPIO_PIN_10}, // Pt - PC14, PA10
+    {GPIO_PIN_13, GPIO_PIN_10}, // Au - PC13, PA10
+    {GPIO_PIN_12, GPIO_PIN_10}, // Hg - PC12, PA10
+    {GPIO_PIN_11, GPIO_PIN_10}, // Tl - PC11, PA10
+    {GPIO_PIN_10, GPIO_PIN_10}, // Pb - PC10, PA10
+    {GPIO_PIN_9,  GPIO_PIN_10}, // Bi - PC9, PA10
+    {GPIO_PIN_8,  GPIO_PIN_10}, // Po - PC8, PA10
+    {GPIO_PIN_7,  GPIO_PIN_10}, // At - PC7, PA10
+    {GPIO_PIN_6,  GPIO_PIN_10}, // Rn - PC6, PA10
+    {GPIO_PIN_5,  GPIO_PIN_10}, // Fr - PC5, PA10
+    {GPIO_PIN_4,  GPIO_PIN_10}, // Ra - PC4, PA10
+    {GPIO_PIN_3,  GPIO_PIN_10}, // Ac - PC3, PA10
+    {GPIO_PIN_2,  GPIO_PIN_10}, // Th - PC2, PA10
+    {GPIO_PIN_1,  GPIO_PIN_10}, // Pa - PC1, PA10
+    {GPIO_PIN_0,  GPIO_PIN_10}, // U - PC0, PA10
+    {GPIO_PIN_15, GPIO_PIN_11}, // Np - PC15, PA11
+    {GPIO_PIN_14, GPIO_PIN_11}, // Pu - PC14, PA11
+    {GPIO_PIN_13, GPIO_PIN_11}, // Am - PC13, PA11
+    {GPIO_PIN_12, GPIO_PIN_11}, // Cm - PC12, PA11
+    {GPIO_PIN_11, GPIO_PIN_11}, // Bk - PC11, PA11
+    {GPIO_PIN_10, GPIO_PIN_11}, // Cf - PC10, PA11
+    {GPIO_PIN_9,  GPIO_PIN_11}, // Es - PC9, PA11
+    {GPIO_PIN_8,  GPIO_PIN_11}, // Fm - PC8, PA11
+    {GPIO_PIN_7,  GPIO_PIN_11}, // Md - PC7, PA11
+    {GPIO_PIN_6,  GPIO_PIN_11}, // No - PC6, PA11
+    {GPIO_PIN_5,  GPIO_PIN_11}, // Lr - PC5, PA11
+    {GPIO_PIN_4,  GPIO_PIN_11}, // Rf - PC4, PA11
+    {GPIO_PIN_3,  GPIO_PIN_11}, // Db - PC3, PA11
+    {GPIO_PIN_2,  GPIO_PIN_11}, // Sg - PC2, PA11
+    {GPIO_PIN_1,  GPIO_PIN_11}, // Bh - PC1, PA11
+    {GPIO_PIN_0,  GPIO_PIN_11}, // Hs - PC0, PA11
+    {GPIO_PIN_15, GPIO_PIN_12}, // Mt - PC15, PA12
+    {GPIO_PIN_14, GPIO_PIN_12}, // Ds - PC14, PA12
+    {GPIO_PIN_13, GPIO_PIN_12}, // Rg - PC13, PA12
+    {GPIO_PIN_12, GPIO_PIN_12}, // Cn - PC12, PA12
+    {GPIO_PIN_11, GPIO_PIN_12}, // Nh - PC11, PA12
+    {GPIO_PIN_10, GPIO_PIN_12}, // Fl - PC10, PA12
+    {GPIO_PIN_9,  GPIO_PIN_12}, // Mc - PC9, PA12
+    {GPIO_PIN_8,  GPIO_PIN_12}, // Lv - PC8, PA12
+    {GPIO_PIN_7,  GPIO_PIN_12}, // Ts - PC7, PA12
+    {GPIO_PIN_6,  GPIO_PIN_12}  // Og - PC6, PA12
 };
+
 
 // Função para buscar o índice de um elemento
 int find_element_index(const char *symbol)
@@ -225,4 +264,44 @@ const char** find_family(const char *name, int *family_size)
         }
     }
     return NULL; // Retorna NULL se a família não for encontrada
+}
+
+void activate_pins(const char *symbol) {
+    int index = find_element_index(symbol);
+    
+    if (index == -1) {
+        // Elemento não encontrado
+        return;
+    }
+    
+    // Obtenha os pinos para o elemento encontrado
+    Pins pinos = element_values[index];
+    
+    // Ative os pinos correspondentes
+    if (pinos.colunaPin != 0) {
+        HAL_GPIO_WritePin(GPIOB, pinos.colunaPin, GPIO_PIN_SET);
+    }
+    if (pinos.linhaPin != 0) {
+        HAL_GPIO_WritePin(GPIOA, pinos.linhaPin, GPIO_PIN_SET);
+    }
+}
+
+void deactivate_pins(const char *symbol) {
+    int index = find_element_index(symbol);
+    
+    if (index == -1) {
+        // Elemento não encontrado
+        return;
+    }
+    
+    // Obtenha os pinos para o elemento encontrado
+    Pins pinos = element_values[index];
+    
+    // Desative os pinos correspondentes
+    if (pinos.colunaPin != 0) {
+        HAL_GPIO_WritePin(GPIOB, pinos.colunaPin, GPIO_PIN_RESET);
+    }
+    if (pinos.linhaPin != 0) {
+        HAL_GPIO_WritePin(GPIOA, pinos.linhaPin, GPIO_PIN_RESET);
+    }
 }
